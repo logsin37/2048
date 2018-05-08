@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>2048!</title>
+        <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+        <style>
+        #container{
+            text-align: center;
+            float:top;
+            position:absolute;
+            border:solid 1px brown;  
+            }
+            
+        .square{
+            position: absolute;
+            display:inline-block;
+            background-color: white;
+            border:0px;
+            width:25%;height: 25%;
+            }
+            
+        .square img{
+                width:100%;height: 100%;
+                margin:0;padding:0;
+            }
+        #show{
+            margin:0;border: 0;padding:5px;
+            background-color: yellow;
+        }
+        #high{
+            margin:0;border: 0;padding:5px;
+            background-color: pink;
+        }
+        #new{
+            margin: 0;border: 0;padding: 5px;
+            background-color: green;
+            font-family: Arial;color: white;
+            cursor: pointer;
+        }
+		</style>
+		<!-- 百度JQuery引用 -->
+        <script type="text/javascript" src="http://libs.baidu.com/jquery/2.0.3/jquery.min.js"></script>
+        <script>
+        //------------------函数 begin--------------
+        var data=Array();
+        data[0]=Array(0,0,0,0);
+        data[1]=Array(0,0,0,0);
+        data[2]=Array(0,0,0,0);
+        data[3]=Array(0,0,0,0);
+        var moves=Array();
+        moves[0]=Array(0,0,0,0);
+        moves[1]=Array(0,0,0,0);
+        moves[2]=Array(0,0,0,0);
+        moves[3]=Array(0,0,0,0);
+        var cellwidth,cellheiht;
+        var count=0;
+        // 显示得分
+        function showgrade(){
+            $("#grade").html(count);
+        }
+        // 窗口resize时重新计算界面布局
+        function AdjustShape(){
+            var containerwidth;
+            if(($(window).width()+50)*0.375<=$(window).height()) containerwidth=0.375;
+            else containerwidth=($(window).height()-25)/$(window).width();
+            var leftvar=$(window).width()*(1-containerwidth)/2;
+            $("#container").css({"width":$(window).width()*containerwidth-5});
+            $("#container").css({"height":$("#container").css("width"),"left":leftvar});
+            cellwidth=$("#container").width()/4;
+            cellheight=$("#container").height()/4;
+            for(var i=0;i<4;i++)
+            {
+                for(var j=0;j<4;j++)
+                {
+                    theid='#'+(i*4+j);
+                    $(theid).css({"top":i*cellheight,"left":j*cellwidth});
+                }
+            }
+        }
+        // 根据方块的分值着色
+        function color(){
+            var i,j;
+            var theid;
+            for(i=0;i<4;i++)
+            {
+                for(j=0;j<4;j++)
+                {
+                    theid='#'+(i*4+j);
+                    $(theid).css({"top":i*cellheight,"left":j*cellwidth});
+                    switch(data[i][j])
+                    {
+                        case 0:$(theid).children("img").attr("src","src/0.png");break;
+                        case 2:$(theid).children("img").attr("src","src/2.png");break;
+                        case 4:$(theid).children("img").attr("src","src/4.png");break;
+                        case 8:$(theid).children("img").attr("src","src/8.png");break;
+                        case 16:$(theid).children("img").attr("src","src/16.png");break;
+                        case 32:$(theid).children("img").attr("src","src/32.png");break;
+                        case 64:$(theid).children("img").attr("src","src/64.png");break;
+                        case 128:$(theid).children("img").attr("src","src/128.png");break;
+                        case 256:$(theid).children("img").attr("src","src/256.png");break;
+                        case 512:$(theid).children("img").attr("src","src/512.png");break;
+                        case 1024:$(theid).children("img").attr("src","src/1024.png");break;
+                        case 2048:$(theid).children("img").attr("src","src/2048.png");break;
+                    }
+                }
+            }
+        }
+        // 获取随机数
+        function GetRandomNum(Min,Max){ //Min到Max，包括Min和Max
+            var Range = Max - Min;   
+            var Rand = Math.random();   
+            return(Min + Math.round(Rand * Range));
+        }  
+        // 随机位置出现方块
+        function RandomFill(){
+            var x = GetRandomNum(0,3);
+            var y = GetRandomNum(0,3);
+            while (data[x][y]!=0){
+                x = GetRandomNum(0,3);
+                y = GetRandomNum(0,3);
+            }
+            var z=GetRandomNum(0,7);
+            if(z==5) data[x][y]=4;
+            else data[x][y]=2;
+        }
+        // 检查当前局面是否死局
+        function check(){
+            var full = true;
+            var same = false;
+            var x, y;
+            for (x = 0; x < 4; x++){
+                for (y = 0; y < 4; y++){
+                    if (data[x][y] == 0) full = false;
+                }
+            }
+            for (x = 0; x < 3; x++){
+                for (y = 0; y < 4; y++){
+                    if (y == 3){
+                        if (data[x][y] == data[x+1][y]) same = true;
+                    }
+                    else{
+                        if (data[x][y] == data[x+1][y] || data[x][y] == data[x][y+1]) same = true;
+                    }
+                }
+            }
+            x = 3;
+            for (y = 0; y < 3; y++){
+                if(data[x][y] == data[x][y+1]) same = true;
+            }
+            if (same == false && full == true) return 0;
+            else return 1;
+        }
+        // 重开局
+        function reborn(){
+            $(".square").remove();
+            $("#container")
+            .append('<div ID="0" class="square"><img src=""/></div>')
+            .append('<div ID="1" class="square"><img src=""/></div>')
+            .append('<div ID="2" class="square"><img src=""/></div>')
+            .append('<div ID="3" class="square"><img src=""/></div>')
+            .append('<div ID="4" class="square"><img src=""/></div>')
+            .append('<div ID="5" class="square"><img src=""/></div>')
+            .append('<div ID="6" class="square"><img src=""/></div>')
+            .append('<div ID="7" class="square"><img src=""/></div>')
+            .append('<div ID="8" class="square"><img src=""/></div>')
+            .append('<div ID="9" class="square"><img src=""/></div>')
+            .append('<div ID="10" class="square"><img src=""/></div>')
+            .append('<div ID="11" class="square"><img src=""/></div>')
+            .append('<div ID="12" class="square"><img src=""/></div>')
+            .append('<div ID="13" class="square"><img src=""/></div>')
+            .append('<div ID="14" class="square"><img src=""/></div>')
+            .append('<div ID="15" class="square"><img src=""/></div>');
+        }
+        // 方块移动动画效果
+        function animation(){
+            var x,y,i=0;
+            var theid;
+            var start,delt;
+            // 计算移动偏移量
+            find:for(x=0;x<3;x++){
+                for(y=0;y<3;y++){
+                    if(moves[x][y]!=0) break find;
+                }
+            }
+            switch(moves[x][y]-moves[x][y]%10){
+                case 10:{
+                    for(x=0;x<4;x++){
+                        for(y=0;y<4;y++){
+                            theid='#'+(x*4+y);
+                            $(theid).css({"z-index":i++});
+                        }
+                        i=0;
+                    }
+                    break;
+                }
+                case 20:{
+                    for(y=0;y<4;y++){
+                        for(x=0;x<4;x++){
+                            theid='#'+(x*4+y);
+                            $(theid).css({"z-index":i++});
+                        }
+                        i=0;
+                    }
+                    break;
+                }
+                case 30:{
+                    for(x=0;x<4;x++){
+                        for(y=3;y>=0;y--){
+                            theid='#'+(x*4+y);
+                            $(theid).css({"z-index":i++});
+                        }
+                        i=0;
+                    }
+                    break;
+                }
+                case 40:{
+                    for(y=0;y<4;y++){
+                        for(x=3;x>=0;x--){
+                            theid='#'+(x*4+y);
+                            $(theid).css({"z-index":i++});
+                        }
+                        i=0;
+                    }
+                    break;
+                }
+                default:break;
+            }
+            // 根据偏移量实施动画效果
+            for(x=0;x<4;x++){
+                for(y=0;y<4;y++){
+                    if(moves[x][y]%10==0) continue;
+                    switch(moves[x][y]-moves[x][y]%10){
+                        case 10:{
+                            theid='#'+(x*4+y);
+                            start=$(theid).css("left");
+                            start=start.substring(0,start.length-2);
+                            start=parseFloat(start);
+                            delt=moves[x][y]%10*cellheight;
+                            $(theid).animate({left:(start-delt)}, 200);
+                            break;
+                            }
+                        case 20:{
+                            theid='#'+(x*4+y);
+                            start=$(theid).css("top");
+                            start=start.substring(0,start.length-2);
+                            start=parseFloat(start);
+                            delt=moves[x][y]%10*cellheight;
+                            $(theid).animate({top:(start-delt)}, 200);
+                            break;
+                            }
+                        case 30:{
+                            theid='#'+(x*4+y);
+                            start=$(theid).css("left");
+                            start=start.substring(0,start.length-2);
+                            start=parseFloat(start);
+                            delt=moves[x][y]%10*cellheight;
+                            $(theid).animate({left:(start+delt)}, 200);
+                            break;
+                            }
+                        case 40:{
+                            theid='#'+(x*4+y);
+                            start=$(theid).css("top");
+                            start=start.substring(0,start.length-2);
+                            start=parseFloat(start);
+                            delt=moves[x][y]%10*cellheight;
+                            $(theid).animate({top:(start+delt)}, 200);
+                            break;
+                            }
+                        default:break;
+                    }
+                }
+            }
+        }
+        // 游戏win回调函数
+        function win(){
+            alert("居然过了，比想象中的聪明啊");
+            alert("这么聪明的话，做我女朋友吧");
+            location.reload();
+        }
+        //------------------函数 end--------------
+        //------------------事件响应 begin--------------
+        $(document).ready(function(){
+			// 初始化
+            showgrade();
+            AdjustShape();
+            RandomFill();//填充2个初始块
+            RandomFill();
+            color();
+			// 重开局按钮事件
+            $("#new").click(function(){
+                //data[0][0]=1024;
+                //data[0][1]=1024;
+                //color();
+                location.reload();
+            });
+			// 按键响应事件
+            $(document).keydown(function(event){
+                var x,y,xt,yt,move;
+                var id;
+                switch(event.keyCode){
+                    case 37:{
+                        if (check() == 0)
+                        {
+                            alert("蠢萌");
+                            location.reload();
+                        }
+                        move = 0;
+                        for (x = 0; x < 4; x++)
+                        {
+                            for (y = 1; y < 4; y++)
+                            {
+                                moves[x][y]=10;
+                                xt = x;
+                                yt = y;
+                                if (data[xt][yt] == 0) continue;
+                                while (yt>0 && data[xt][yt-1] == 0)
+                                {
+                                    data[xt][yt-1] = data[xt][yt];
+                                    data[xt][yt] = 0;
+                                    moves[x][y]++;
+                                    move = 1;
+                                    yt--;
+                                }
+                                if (yt>0)
+                                {
+                                    if (data[xt][yt] == data[xt][yt-1])
+                                    {
+                                        data[xt][yt-1] *= 2;
+                                        count += data[xt][yt-1];
+                                        showgrade();
+                                        if(data[xt][yt-1]==2048) setTimeout('win()',250);
+                                        data[xt][yt] = 0;
+                                        moves[x][y]++;
+                                        move = 1;
+                                    }
+                                }
+                            }
+                        }
+                        if (move == 1) RandomFill();
+                        animation();
+                        setTimeout('reborn()', 205);
+                        setTimeout('color()', 205);
+                        moves[0]=Array(0,0,0,0);
+                        moves[1]=Array(0,0,0,0);
+                        moves[2]=Array(0,0,0,0);
+                        moves[3]=Array(0,0,0,0);
+                        break;
+                    }//←
+                    case 38:{
+                        if (check() == 0)
+                        {
+                            alert("跪了");
+                            location.reload();
+                        }
+                        move = 0;
+                        for (y = 0; y < 4; y++)
+                        {
+                            for (x = 1; x < 4; x++)
+                            {
+                                moves[x][y]=20;
+                                xt = x;
+                                yt = y;
+                                if (data[xt][yt] == 0) continue;
+                                while (xt > 0 && data[xt - 1][yt] == 0 )
+                                {
+                                    data[xt - 1][yt] = data[xt][yt];
+                                    data[xt][yt]=0;
+                                    moves[x][y]++;
+                                    move = 1;
+                                    xt--;
+                                }
+                                if (xt > 0)
+                                {
+                                    if (data[xt][yt] == data[xt - 1][yt])
+                                    {
+                                        data[xt - 1][yt] *= 2;
+                                        count += data[xt - 1][yt];;
+                                        showgrade();
+                                        if(data[xt - 1][yt]==2048) setTimeout('win()',250);
+                                        data[xt][yt]=0;
+                                        moves[x][y]++;
+                                        move = 1;
+                                    }
+                                }
+                            }
+                        }
+                        if (move == 1) RandomFill();
+                        animation();
+                        setTimeout('reborn()', 205);
+                        setTimeout('color()', 205);
+                        moves[0]=Array(0,0,0,0);
+                        moves[1]=Array(0,0,0,0);
+                        moves[2]=Array(0,0,0,0);
+                        moves[3]=Array(0,0,0,0);
+                        break;
+                    }//↑
+                    case 39:{
+                        if (check() == 0)
+                        {
+                            alert("少侠请重新来过");
+                            location.reload();
+                        }
+                        move=0;
+                        for (x = 0; x < 4; x++)
+                        {
+                            for (y = 2; y >=0; y--)
+                            {
+                                moves[x][y]=30;
+                                xt = x;
+                                yt = y;
+                                if (data[xt][yt] == 0) continue;
+                                while (yt < 3 && data[xt][yt + 1] == 0)
+                                {
+                                    data[xt][yt + 1] = data[xt][yt];
+                                    data[xt][yt] = 0;
+                                    moves[x][y]++;
+                                    move = 1;
+                                    yt++;
+                                }
+                                if (yt < 3)
+                                {
+                                    if (data[xt][yt] == data[xt][yt + 1])
+                                    {
+                                        data[xt][yt+ 1] *= 2;
+                                        count += data[xt][yt + 1];
+                                        showgrade();
+                                        if(data[xt][yt+ 1]==2048) setTimeout('win()',250);
+                                        data[xt][yt] = 0;
+                                        moves[x][y]++;
+                                        move = 1;
+                                    }
+                                }
+                            }
+                        }
+                        if (move == 1) RandomFill();
+                        animation();
+                        setTimeout('reborn()', 205);
+                        setTimeout('color()', 205);
+                        moves[0]=Array(0,0,0,0);
+                        moves[1]=Array(0,0,0,0);
+                        moves[2]=Array(0,0,0,0);
+                        moves[3]=Array(0,0,0,0);
+                        break;
+                    }//→
+                    case 40:{
+                        if (check() == 0)
+                        {
+                            alert("然而沼跃鱼早就看穿了一切");
+                            location.reload();
+                        }
+                        move=0;
+                        for (y = 0; y < 4; y++)
+                        {
+                            for (x = 2; x >=0; x--)
+                            {
+                                moves[x][y]=40;
+                                xt = x;
+                                yt = y;
+                                if (data[xt][yt] == 0) continue;
+                                while (xt <3 && data[xt +1][yt] == 0 )
+                                {
+                                    data[xt + 1][yt] = data[xt][yt];
+                                    data[xt][yt]=0;
+                                    moves[x][y]++;
+                                    move = 1;
+                                    xt++;
+                                }
+                                if (xt < 3)
+                                {
+                                    if (data[xt][yt] == data[xt + 1][yt])
+                                    {
+                                        data[xt + 1][yt] *= 2;
+                                        count += data[xt + 1][yt];
+                                        showgrade();
+                                        if(data[xt + 1][yt]==2048) setTimeout('win()',250);
+                                        data[xt][yt]=0;
+                                        moves[x][y]++;
+                                        move = 1;
+                                    }
+                                }
+                            }
+                        }
+                        if (move == 1) RandomFill();
+                        animation();
+                        setTimeout('reborn()', 205);
+                        setTimeout('color()', 205);
+                        moves[0]=Array(0,0,0,0);
+                        moves[1]=Array(0,0,0,0);
+                        moves[2]=Array(0,0,0,0);
+                        moves[3]=Array(0,0,0,0);
+                        break;
+                    }//↓
+                    default:break;
+                }
+            });
+        });
+		// 窗体调整大小事件
+        $(window).resize(function(){
+            AdjustShape();
+        });
+		//------------------事件响应 begin--------------
+        </script>
+    </head>
+
+    <body>
+    <div ID="container">
+        <div ID="0" class="square"><img src=""/></div>
+        <div ID="1" class="square"><img src=""/></div>
+        <div ID="2" class="square"><img src=""/></div>
+        <div ID="3" class="square"><img src=""/></div>
+        <div ID="4" class="square"><img src=""/></div>
+        <div ID="5" class="square"><img src=""/></div>
+        <div ID="6" class="square"><img src=""/></div>
+        <div ID="7" class="square"><img src=""/></div>
+        <div ID="8" class="square"><img src=""/></div>
+        <div ID="9" class="square"><img src=""/></div>
+        <div ID="10" class="square"><img src=""/></div>
+        <div ID="11" class="square"><img src=""/></div>
+        <div ID="12" class="square"><img src=""/></div>
+        <div ID="13" class="square"><img src=""/></div>
+        <div ID="14" class="square"><img src=""/></div>
+        <div ID="15" class="square"><img src=""/></div>
+    </div>
+    <!-- <span ID="high">from：日和 to：君君</span><br/><br /> -->
+    <span ID='show'>得分: <span ID="grade">0</span></span><br/><br />
+    <span ID='new'>新开局</span>
+    </body>
+</html>
